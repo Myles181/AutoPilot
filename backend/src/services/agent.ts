@@ -1,6 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+// import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 const PROTOCOL_CONTEXT = `
 You are the AutoPilot financial agent running on the Celo blockchain.
@@ -99,7 +102,7 @@ ${PROTOCOL_CONTEXT}
 ---
 
 Analyse this user's savings goal and respond with a JSON object ONLY.
-No markdown. No text outside the JSON.
+No markdown code blocks. No text outside the JSON.
 
 User data:
 - Goal: ${input.goalCategory} ${input.goalDescription ? `(${input.goalDescription})` : ""}
@@ -160,6 +163,7 @@ Respond with this JSON:
 `}
 `;
 
+  /*
   const message = await client.messages.create({
     model:      "claude-sonnet-4-20250514",
     max_tokens: 500,
@@ -167,9 +171,18 @@ Respond with this JSON:
   });
 
   const raw  = (message.content[0] as any).text.trim();
-  const json = JSON.parse(raw);
+  */
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const raw = response.text().trim();
+  
+  // Strip potential markdown code blocks if the model included them despite instructions
+  const jsonStr = raw.startsWith("```") ? raw.replace(/^```json?\n?/, "").replace(/\n?```$/, "") : raw;
+  const json = JSON.parse(jsonStr);
 
   return json as FeasibilityResult;
 }
+
 
  
